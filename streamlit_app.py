@@ -7,6 +7,8 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 import numpy as np
 import speech_recognition as sr
 import streamlit as st
+import os
+import signal
 
 # Set page configuration
 st.set_page_config(page_title="Hand Gesture ", page_icon="🖐️", layout="centered")
@@ -14,7 +16,6 @@ st.set_page_config(page_title="Hand Gesture ", page_icon="🖐️", layout="cent
 
 st.write(
     f'<div style="display: flex; align-items: center; justify-content: space-between;">'
-    f'<div><img src="https://cdn.dribbble.com/users/378514/screenshots/10081609/media/f1caa49981d0c2a25e462f302478e0fa.png?resize=400x300&vertical=center" width="100" alt="🖐️ Hand Gesture Logo"></div>'
     f'<div style="text-align: left; font-style: italic;">'
     f'<h1>VolumeWizard: Gesture-Driven Sound Mastery</h1>'
     f'</div></div>',
@@ -96,9 +97,17 @@ def control_audio(mode):
                 cv2.rectangle(img, (50, int(vol_bar)), (85, 400), (0, 0, 255), cv2.FILLED)
                 cv2.putText(img, f"{int(np.interp(length, [30, 350], [0, 100]))}%",
                             (10, 40), cv2.FONT_ITALIC, 1, (0, 255, 98), 3)
-            elif mode == 'bass':
+                
                 thumb_status = detect_thumb_status(lm_list)
-                adjust_bass(thumb_status)
+                if thumb_status == "thumb_up":
+                    st.write("Unmuting Audio.")
+                    volume.SetMute(False, None)
+                    mute_status = False
+                    # Implement bass increase logic
+                elif thumb_status == "thumb_down":
+                    print("Muting audio.")
+                    volume.SetMute(True, None)
+                    mute_status = True
 
         cv2.imshow('Hand Gestures', img)
 
@@ -118,15 +127,6 @@ def detect_thumb_status(hand_landmarks):
     else:
         return "other"
 
-# Function to adjust bass
-def adjust_bass(thumb_status):
-    if thumb_status == "thumb_up":
-        st.write("Thumb up. Increasing bass.")
-        # Implement bass increase logic
-    elif thumb_status == "thumb_down":
-        st.write("Thumb down. Decreasing bass.")
-        # Implement bass decrease logic
-
 # Streamlit UI continued...
 st.write("Listening for voice command...")
 while True:
@@ -136,14 +136,12 @@ while True:
         if "volume" in command:
             st.write("Controlling Volume...")
             control_audio('volume')
-        elif "control" in command:
-            st.write("Controlling Bass...")
-            control_audio('bass')
         elif "exit" in command:
             st.write("Exiting...")
+            os.kill(os.getpid(), signal.SIGINT)
             break
         else:
-            st.write("Command not recognized. Try saying 'volume' or 'bass'.")
+            st.write("Command not recognized. Try saying 'volume' or 'exit'.")
 
 # Add footer using HTML
 st.write("""
